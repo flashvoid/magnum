@@ -435,16 +435,15 @@ do
 done
 
 # Which node is running Grafana
-NODE_IP=`kubectl get po -n prometheus-monitoring -o jsonpath={.items[0].status.hostIP} -l name=grafana`
-PROM_SERVICE_IP=`kubectl get svc prometheus --namespace prometheus-monitoring -o jsonpath={..clusterIP}`
+GRAFANA_SERVICE_IP=`kubectl get svc grafana --namespace prometheus-monitoring -o jsonpath={..clusterIP}`
 
 # The Grafana pod might be running but the app might still be initiating
 echo "Check if Grafana is ready..."
-curl --user admin:$ADMIN_PASSWD -X GET http://$NODE_IP:3000/api/datasources/1
+curl --user admin:$ADMIN_PASSWD -X GET http://$GRAFANA_SERVICE_IP:3000/api/datasources/1
 until [ $? -eq 0 ]
 do
     sleep 2
-    curl --user admin:$ADMIN_PASSWD -X GET http://$NODE_IP:3000/api/datasources/1
+    curl --user admin:$ADMIN_PASSWD -X GET http://$GRAFANA_SERVICE_IP:3000/api/datasources/1
 done
 
 # Inject Prometheus datasource into Grafana
@@ -453,8 +452,8 @@ do
     INJECT=`curl --user admin:$ADMIN_PASSWD -X POST  \
         -H "Content-Type: application/json;charset=UTF-8" \
         --data-binary '''"'"'''{"name":"k8sPrometheus","isDefault":true,
-            "type":"prometheus","url":"http://'''"'"'''$PROM_SERVICE_IP'''"'"''':9090","access":"proxy"}'''"'"'''\
-        "http://$NODE_IP:3000/api/datasources/"`
+            "type":"prometheus","url":"http://'''"'"'''$GRAFANA_SERVICE_IP'''"'"''':9090","access":"proxy"}'''"'"'''\
+        "http://$GRAFANA_SERVICE_IP:3000/api/datasources/"`
 
     if [[ "$INJECT" = *"Datasource added"* ]]; then
         echo "Prometheus datasource injected into Grafana"
